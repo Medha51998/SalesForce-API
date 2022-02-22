@@ -1,0 +1,24 @@
+#%RAML 1.0
+title: insurance-sys-salesforce-api
+
+/quotes:
+  get:
+    queryParameters:
+      
+      id: number
+   
+    responses:
+      200:
+        body:
+          application/json:    
+  post:
+    queryParameters:
+      id: number
+    body:
+      application/json:
+    responses:
+          201:
+                description:  Added quote    
+
+       
+    

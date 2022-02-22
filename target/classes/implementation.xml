@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+	<configuration-properties doc:name="Configuration properties" doc:id="6d37214d-89f3-4984-a18f-38a4864890dd" file="config.yaml" />
+	
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="a751d585-9e2f-47d5-86a4-5444f61adecf" >
+		<salesforce:basic-connection username="${Salesforce.username}" password="${secure::Salesforce.password}" securityToken="${secure::Salesforce.securityToken}" />
+	</salesforce:sfdc-config>
+	<global-property doc:name="Global Property" doc:id="ea7eaccd-dcd2-40e3-a4f6-f1d2baa0a645" name="secure.key" value="Mulesoft" />
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="2ac44e77-1c2b-48e0-817b-daf66c4be136" file="config.yaml" key="Mulesoft" >
+		<secure-properties:encrypt algorithm="Blowfish" />
+	</secure-properties:config>
+	<flow name="getSalesforceQuoteFlow" doc:id="68e46c89-515c-477b-b5aa-0b587e679068" >
+		<logger level="INFO" doc:name="Begin Logger" doc:id="ebfcb9fb-fde3-4406-a599-e84fd32bc075" message="Enter insurance-sys-salesforce-api"/>
+		<salesforce:query doc:name="Select Account" doc:id="05d564dc-191e-4a2d-b2b1-1fd17bdc4fef" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query ><![CDATA[SELECT insurername__c, phone,ID__c
+FROM Account 
+WHERE ID__c =:id]]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	"id" : attributes.queryParams.id
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<logger level="INFO" doc:name="Exit Logger" doc:id="6eb82fd8-3706-42d4-957c-b626e244be18" message="#[payload]"/>
+	</flow>
+	<flow name="updateSalesforceQuoteFlow" doc:id="9fbe9423-225a-4601-9609-189a666cb7f7">
+		<logger level="INFO" doc:name="Begin LOGGER" doc:id="159b02d0-05fb-4655-9818-dbb676142516" message="Enter insurance-sys-salesforce-api : updateSalesforceQuoteFlow" />
+		<set-variable value="#[payload]" doc:name="Set Variable" doc:id="f020f3e3-d1bb-4c40-840f-b3b739354175" variableName="data" />
+		<ee:transform doc:name="upsert input" doc:id="3ae7a7be-5e51-4b03-93e3-b5c05c55de8d">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+
+
+payload map ((item,index) ->
+{
+    ID__c: item.ID as Number,
+    Name : item.insured_name as String,
+    PremiumAmount__c: item.premium as Number,
+	InsurancePeriod__c: item.insuranceperiod as String,
+	SumInsured__c : item.sumInsured as Number
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:upsert objectType="Account" externalIdFieldName="ID" doc:name="Upsert" doc:id="fd0000ca-adb0-4b74-9e85-a153db2869ef" config-ref="Salesforce_Config"/>
+		<logger level="INFO" doc:name="End LOGGER" doc:id="89d6be3f-c30f-42ca-a613-12f216e0bc5b" message="Exit insurance-sys-salesforce-api : updateSalesforceQuoteFlow" />
+	</flow>
+</mule>
